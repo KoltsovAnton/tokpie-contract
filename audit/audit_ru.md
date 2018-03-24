@@ -112,5 +112,5 @@ postICO
 
 ## Авторы
 
-Аудит проведен Михаилом Семёнкиным, команда [EthereumWorks](https://github.com/EthereumWorks)
+Аудит провёл Михаил Семёнкин ([Mikhail Semenkin](https://t.me/krogla)), команда [EthereumWorks](https://github.com/EthereumWorks)
 По вопросам проведения аудитов и разработки смарт контрактов обращайтесь: Telegram - @SlavaPoe, Skype - v.poskonin (MousePo).
