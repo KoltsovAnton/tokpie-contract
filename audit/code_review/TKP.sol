@@ -596,8 +596,6 @@ contract preICO is FinalizableCrowdsale {
     // amount of raised money in wei
 
     uint256 public weiRaised;
-    // EW Ok
-    uint256 public maxEtherPerInvestor;
 
     // how many token units a buyer gets per wei
     // EW Ok
@@ -628,19 +626,15 @@ contract preICO is FinalizableCrowdsale {
      * @dev _maxEtherPerInvestor should be 10 ether
      */
     // EW Ok
-    function preICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate, uint256 _maxEtherPerInvestor) public {
+    function preICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate) public {
         // EW Ok
         require(_token != address(0) && _wallet != address(0));
         // EW Ok
         require(_endDate > _startDate);
         // EW Ok
-        require(_maxEtherPerInvestor > 0);
-        // EW Ok
         startDate = _startDate;
         // EW Ok
         endDate = _endDate;
-        // EW Ok
-        maxEtherPerInvestor = _maxEtherPerInvestor;
         // EW Ok
         token = Token(_token);
         // EW preICO contract is owner of vault
@@ -726,10 +720,6 @@ contract preICO is FinalizableCrowdsale {
         TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
         // EW Ok
         forwardFunds();
-
-        // Maximum contribution level in ether for each investor = 10 ETH
-        // EW Ok
-        require(vault.deposited(beneficiary) <= maxEtherPerInvestor);
     }
 
     // send ether to the fund collection wallet
@@ -770,8 +760,6 @@ contract ICO is Pausable {
     // EW Ok
     uint256 public endDate;
     // EW Ok
-    uint256 public maxEtherPerInvestor;
-    // EW Ok
     uint256 public hardCap;
 
     // amount of raised money in wei
@@ -779,6 +767,7 @@ contract ICO is Pausable {
     uint256 public weiRaised;
     // EW Ok
     address public wallet;
+    // EW - redundant
     // EW Ok
     mapping(address => uint256) public deposited;
 
@@ -799,21 +788,17 @@ contract ICO is Pausable {
      * @dev _maxEtherPerInvestor should be 10 ether
      * @dev _hardCap should be 8700 ether
      */
-    function ICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate, uint256 _maxEtherPerInvestor, uint256 _hardCap) public {
+    function ICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate, uint256 _hardCap) public {
         // EW Ok
         require(_token != address(0) && _wallet != address(0));
         // EW Ok
         require(_endDate > _startDate);
-        // EW Ok
-        require(_maxEtherPerInvestor > 0);
         // EW Ok
         require(_hardCap > 0);
         // EW Ok
         startDate = _startDate;
         // EW Ok
         endDate = _endDate;
-        // EW Ok
-        maxEtherPerInvestor = _maxEtherPerInvestor;
         // EW Ok
         hardCap = _hardCap;
         // EW Ok
@@ -893,11 +878,6 @@ contract ICO is Pausable {
         token.mint(beneficiary, tokens);
         // EW Ok
         TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
-        // EW Ok
-        deposited[beneficiary] = deposited[beneficiary].add(weiAmount);
-
-        // Maximum contribution level in ether for each investor = 10 ETH
-        require(deposited[beneficiary] <= maxEtherPerInvestor);
     }
 
     // @return true if the transaction can buy tokens
@@ -988,7 +968,7 @@ contract postICO is Ownable {
         // EW Ok
         walletB = _walletB;
         // EW Ok
-        walletC     = _walletC;
+        walletC = _walletC;
         // EW Ok
         walletF = _walletF;
         // EW Ok
@@ -1000,6 +980,7 @@ contract postICO is Ownable {
         require(now > endICODate);
         // EW Ok
         require(!finished);
+        require(token.saleAgent() == address(this));
         // EW Ok
         FTST = token.totalSupply().mul(100).div(65);
 
@@ -1013,7 +994,7 @@ contract postICO is Ownable {
         // EW Ok
         token.mint(this, tokensE);
 
-        // Team: 9.6% (2-years lock).
+        // Team: 9.6% (2-years lock)
         // Distribute 0.25% of final total supply of tokens (FTST*25/10000) 4 (four) times every half a year during 2 (two) years after endICODate to the wallet [B].
         // hold this tokens on postICO contract
         // EW Ok
@@ -1023,7 +1004,7 @@ contract postICO is Ownable {
         // EW Ok
         token.mint(this, tokensB);
 
-        // Distribute 2.15% of final total supply of tokens (FTST*215/10000) 4 (four) times every half a year during 2 (two) years after endICODate to the wallet [C]. 
+        // Distribute 2.15% of final total supply of tokens (FTST*215/10000) 4 (four) times every half a year during 2 (two) years after endICODate to the wallet [C].
         // hold this tokens on postICO contract
         // EW Ok
         paymentSizeC = FTST.mul(215).div(10000);
@@ -1210,5 +1191,86 @@ contract postICO is Ownable {
             // EW Ok
             completedBC[order] = true;
         }
+    }
+}
+
+// EW Ok
+contract Controller is Ownable {
+    // EW Ok
+    Token public token;
+    // EW Ok
+    preICO public pre;
+    // EW Ok
+    ICO public ico;
+    // EW Ok
+    postICO public post;
+    // EW Ok
+    enum State {NONE, PRE_ICO, ICO, POST}
+    // EW Ok
+    State public state;
+    // EW Ok
+    function Controller(address _token, address _preICO, address _ico, address _postICO) public {
+        // EW Ok
+        require(_token != address(0x0));
+        // EW Ok
+        token = Token(_token);
+        // EW Ok
+        pre = preICO(_preICO);
+        // EW Ok
+        ico = ICO(_ico);
+        // EW Ok
+        post = postICO(_postICO);
+        // EW Ok
+        require(post.endICODate() == ico.endDate());
+        // EW Ok
+        require(pre.weiRaised() == 0);
+        // EW Ok
+        require(ico.weiRaised() == 0);
+        // EW Ok
+        require(token.totalSupply() == 0);
+        // EW Ok
+        state = State.NONE;
+    }
+
+    // EW Ok
+    function startPreICO() onlyOwner public {
+        // EW Ok
+        require(state == State.NONE);
+        // EW Ok
+        require(token.owner() == address(this));
+        // EW Ok
+        token.setSaleAgent(pre);
+        // EW Ok
+        state = State.PRE_ICO;
+    }
+
+    // EW Ok
+    function startICO() onlyOwner public {
+        // EW Ok
+        require(now > pre.endDate());
+        // EW Ok
+        require(state == State.PRE_ICO);
+        // EW - redundant
+        // EW Ok
+        require(token.owner() == address(this));
+        // EW Ok
+        token.setSaleAgent(ico);
+        // EW Ok
+        state = State.ICO;
+    }
+
+    // EW Ok
+    function startPostICO() onlyOwner public {
+        // EW Ok
+        require(now > ico.endDate());
+        // EW Ok
+        require(state == State.ICO);
+        // EW - redundant
+        // EW Ok
+        require(token.owner() == address(this));
+        // EW Ok
+        token.setSaleAgent(post);
+        // EW Ok
+        state = State.POST;
     }
 }
