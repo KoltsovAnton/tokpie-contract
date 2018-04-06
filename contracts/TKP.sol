@@ -445,8 +445,6 @@ contract preICO is FinalizableCrowdsale {
     // amount of raised money in wei
     uint256 public weiRaised;
 
-    uint256 public maxEtherPerInvestor;
-
     // how many token units a buyer gets per wei
     uint256 public constant rate = 1920;
 
@@ -472,13 +470,11 @@ contract preICO is FinalizableCrowdsale {
      * @dev _endDate should be 1526342340
      * @dev _maxEtherPerInvestor should be 10 ether
      */
-    function preICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate, uint256 _maxEtherPerInvestor) public {
+    function preICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate) public {
         require(_token != address(0) && _wallet != address(0));
         require(_endDate > _startDate);
-        require(_maxEtherPerInvestor > 0);
         startDate = _startDate;
         endDate = _endDate;
-        maxEtherPerInvestor = _maxEtherPerInvestor;
         token = Token(_token);
         vault = new RefundVault(_wallet);
     }
@@ -538,9 +534,6 @@ contract preICO is FinalizableCrowdsale {
         token.mint(beneficiary, tokens);
         TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
         forwardFunds();
-
-        // Maximum contribution level in ether for each investor = 10 ETH
-        require(vault.deposited(beneficiary) <= maxEtherPerInvestor);
     }
 
     // send ether to the fund collection wallet
@@ -570,8 +563,6 @@ contract ICO is Pausable {
     // July 05, 2018 on UTC 23:59
     uint256 public endDate;
 
-    uint256 public maxEtherPerInvestor;
-
     uint256 public hardCap;
 
     // amount of raised money in wei
@@ -597,14 +588,12 @@ contract ICO is Pausable {
      * @dev _maxEtherPerInvestor should be 10 ether
      * @dev _hardCap should be 8700 ether
      */
-    function ICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate, uint256 _maxEtherPerInvestor, uint256 _hardCap) public {
+    function ICO(address _token, address _wallet, uint256 _startDate, uint256 _endDate, uint256 _hardCap) public {
         require(_token != address(0) && _wallet != address(0));
         require(_endDate > _startDate);
-        require(_maxEtherPerInvestor > 0);
         require(_hardCap > 0);
         startDate = _startDate;
         endDate = _endDate;
-        maxEtherPerInvestor = _maxEtherPerInvestor;
         hardCap = _hardCap;
         token = Token(_token);
         wallet = _wallet;
@@ -654,10 +643,6 @@ contract ICO is Pausable {
 
         token.mint(beneficiary, tokens);
         TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
-        deposited[beneficiary] = deposited[beneficiary].add(weiAmount);
-
-        // Maximum contribution level in ether for each investor = 10 ETH
-        require(deposited[beneficiary] <= maxEtherPerInvestor);
     }
 
     // @return true if the transaction can buy tokens
@@ -730,6 +715,7 @@ contract postICO is Ownable {
     function finish() onlyOwner public {
         require(now > endICODate);
         require(!finished);
+        require(token.saleAgent() == address(this));
 
         FTST = token.totalSupply().mul(100).div(65);
 
@@ -740,14 +726,14 @@ contract postICO is Ownable {
         uint256 tokensE = paymentSizeE.mul(8);
         token.mint(this, tokensE);
 
-        // Team: 9.6% (2-years lock).
+        // Team: 9.6% (2-years lock)
         // Distribute 0.25% of final total supply of tokens (FTST*25/10000) 4 (four) times every half a year during 2 (two) years after endICODate to the wallet [B].
         // hold this tokens on postICO contract
         paymentSizeB = FTST.mul(25).div(10000);
         uint256 tokensB = paymentSizeB.mul(4);
         token.mint(this, tokensB);
 
-        // Distribute 2.15% of final total supply of tokens (FTST*215/10000) 4 (four) times every half a year during 2 (two) years after endICODate to the wallet [C]. 
+        // Distribute 2.15% of final total supply of tokens (FTST*215/10000) 4 (four) times every half a year during 2 (two) years after endICODate to the wallet [C].
         // hold this tokens on postICO contract
         paymentSizeC = FTST.mul(215).div(10000);
         uint256 tokensC = paymentSizeC.mul(4);
@@ -865,5 +851,55 @@ contract postICO is Ownable {
             token.transfer(walletC, paymentSizeC);
             completedBC[order] = true;
         }
+    }
+}
+
+contract Controller is Ownable {
+    Token public token;
+    preICO public pre;
+    ICO public ico;
+    postICO public post;
+
+    enum State {NONE, PRE_ICO, ICO, POST}
+
+    State public state;
+
+    function Controller(address _token, address _preICO, address _ico, address _postICO) public {
+        require(_token != address(0x0));
+        token = Token(_token);
+        pre = preICO(_preICO);
+        ico = ICO(_ico);
+        post = postICO(_postICO);
+
+        require(post.endICODate() == ico.endDate());
+
+        require(pre.weiRaised() == 0);
+        require(ico.weiRaised() == 0);
+
+        require(token.totalSupply() == 0);
+        state = State.NONE;
+    }
+
+    function startPreICO() onlyOwner public {
+        require(state == State.NONE);
+        require(token.owner() == address(this));
+        token.setSaleAgent(pre);
+        state = State.PRE_ICO;
+    }
+
+    function startICO() onlyOwner public {
+        require(now > pre.endDate());
+        require(state == State.PRE_ICO);
+        require(token.owner() == address(this));
+        token.setSaleAgent(ico);
+        state = State.ICO;
+    }
+
+    function startPostICO() onlyOwner public {
+        require(now > ico.endDate());
+        require(state == State.ICO);
+        require(token.owner() == address(this));
+        token.setSaleAgent(post);
+        state = State.POST;
     }
 }
