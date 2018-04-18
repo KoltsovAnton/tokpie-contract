@@ -454,7 +454,50 @@ contract Pausable is Ownable {
 }
 
 /**
- * @title Finalizable Crowdsale
+ * @title WhitelistedCrowdsale
+ * @dev Crowdsale in which only whitelisted users can contribute.
+ */
+// EW Ok
+contract WhitelistedCrowdsale is Ownable {
+    // EW Ok
+    mapping(address => bool) public whitelist;
+
+    /**
+     * @dev Reverts if beneficiary is not whitelisted. Can be used when extending this contract.
+     */
+    // EW Ok
+    modifier isWhitelisted(address _beneficiary) {
+        // EW Ok
+        require(whitelist[_beneficiary]);
+        _;
+    }
+
+    /**
+     * @dev Adds single address to whitelist.
+     * @param _beneficiary Address to be added to the whitelist
+     */
+    // EW Ok
+    function addToWhitelist(address _beneficiary) external onlyOwner {
+        // EW Ok
+        whitelist[_beneficiary] = true;
+    }
+
+    /**
+     * @dev Adds list of addresses to whitelist. Not overloaded due to limitations with truffle testing.
+     * @param _beneficiaries Addresses to be added to the whitelist
+     */
+    // EW Ok
+    function addManyToWhitelist(address[] _beneficiaries) external onlyOwner {
+        // EW Ok
+        for (uint256 i = 0; i < _beneficiaries.length; i++) {
+            // EW Ok
+            whitelist[_beneficiaries[i]] = true;
+        }
+    }
+}
+
+/**
+ * @title FinalizableCrowdsale
  * @dev Extension of Crowdsale where an owner can do extra work
  * after finishing.
  */
@@ -581,7 +624,7 @@ contract RefundVault is Ownable {
 }
 
 // EW Ok
-contract preICO is FinalizableCrowdsale {
+contract preICO is FinalizableCrowdsal, WhitelistedCrowdsale {
     // EW Ok
     Token public token;
 
@@ -693,7 +736,7 @@ contract preICO is FinalizableCrowdsale {
 
     // low level token purchase function
     // EW Ok
-    function buyTokens(address beneficiary) whenNotPaused public payable {
+    function buyTokens(address beneficiary) whenNotPaused isWhitelisted(beneficiary) isWhitelisted(msg.sender) public payable {
         // EW Ok
         require(beneficiary != address(0));
         // EW Ok
@@ -746,7 +789,7 @@ contract preICO is FinalizableCrowdsale {
 
 
 // EW Ok
-contract ICO is Pausable {
+contract ICO is Pausable, WhitelistedCrowdsale {
     // EW Ok
     using SafeMath for uint256;
     // EW Ok
@@ -853,7 +896,8 @@ contract ICO is Pausable {
     }
 
     // low level token purchase function
-    function buyTokens(address beneficiary) whenNotPaused public payable {
+    // EW Ok
+    function buyTokens(address beneficiary) whenNotPaused isWhitelisted(beneficiary) isWhitelisted(msg.sender) public payable {
         // EW Ok
         require(beneficiary != address(0));
         // EW Ok
@@ -994,7 +1038,7 @@ contract postICO is Ownable {
         // EW Ok
         token.mint(this, tokensE);
 
-        // Team: 9.6% (2-years lock)
+        // Team: 9.6% (2-years lock).
         // Distribute 0.25% of final total supply of tokens (FTST*25/10000) 4 (four) times every half a year during 2 (two) years after endICODate to the wallet [B].
         // hold this tokens on postICO contract
         // EW Ok
@@ -1013,13 +1057,13 @@ contract postICO is Ownable {
         // EW Ok
         token.mint(this, tokensC);
 
-        // Angel investors: 2%. Distribute 2% of final total supply of tokens (FTST*2/100) after endICODate to the wallet [F]
+        // Angel investors: 2%. Distribute 2% of final total supply of tokens (FTST*2/100) after endICODate to the wallet [F].
         // EW Ok
         uint256 tokensF = FTST.mul(2).div(100);
         // EW Ok
         token.mint(walletF, tokensF);
 
-        // Referral program 1,3% + Bounty program: 1,1%. Distribute 2,4% of final total supply of tokens (FTST*24/1000) after endICODate to the wallet [G]
+        // Referral program 1,3% + Bounty program: 1,1%. Distribute 2,4% of final total supply of tokens (FTST*24/1000) after endICODate to the wallet [G].
         // EW Ok
         uint256 tokensG = FTST.mul(24).div(1000);
         // EW Ok
@@ -1118,7 +1162,6 @@ contract postICO is Ownable {
             completedE[order] = true;
         }
         // On July 04, 2022@ UTC 23:59 = FTST*2625/100000 (2.625% of final total supply of tokens) to the wallet [E].
-
         // EW Ok
         if (order == 8) {
             // Monday, 4 July 2022 г., 23:59:00
