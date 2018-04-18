@@ -6,7 +6,7 @@ Status - in work, last edition 2018-04-18
 
 The contract code is checked for software bookmarks and critical errors that can lead to loss of money by investors.
   
-* For a successful participation in the ICO stages, the participant must be entered in the whitelist.
+* For a successful participation in the ICO stages, the participant must be present in the whitelist.
 * There is a possibility of sending / using tokens before the end of the ICO.
 * The presence of a `Controller` contract does not exclude the possibility of stages without the use of this contract.
 
