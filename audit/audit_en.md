@@ -97,7 +97,7 @@ RefundVault
 6) (Medium) for correct operation, the `Controller` contract must be used to automate the switch between the ICO stages, otherwise the token owner must set address of this contract as `saleAgent`
 7) (Medium) If `preICO` does not take place (softCap does not closed), there is a refund to investors, but there is no refund / incineration of tokens if, for example, ICO retries are planned.
 
-ICO
+`ICO`
 
 1) Inherits `Pausable`, the owner can change ownership and pause
 2) Inherits `WhitelistedCrowdsale`, the owner sets a "whitelist" of participant addresses
@@ -105,7 +105,7 @@ ICO
 4) (Note) the purchase of tokens is limited to a "white list"
 5) (Important) tokens can be sent / used outside of the `preICO` contract during pause (see note to `BasicToken` and `preICO`)
 6) (Important) there are no restrictions on sending / using tokens during ICO periods
-7) (Not critical) the calculated periods of the token price  are shifted by 2 minutes from the start of the ICO, i.e. actually operate from 0:01:00 on the day of launch and then in each period until 23:59 on the 6th day, respectively, the beginning of the period is not at 0:00:00 on the first day of the next period, but at 23:59:00 on the last day of the previous day period
+7) (Not critical) the calculated periods of the token price  are shifted by 2 minutes from the start of the ICO, i.e. actually operate from 0:01:00 on the day of launch and then in each period until 23:59 on the 6th day, respectively, the beginning of the period is not at 0:00:00 on the first day of the next period, but at 23:59:00 on the last day of the previous period
 8) (Medium) for correct operation, the `Controller` contract must be used to automate the switch between the ICO stages, otherwise the token owner must set address of this contract as `saleAgent`
 9) (Note) When a contract is being deployed, you must specify the start and end dates of the ICO precisely so that they do not intersect in the `preICO`
 10) (Not critical) is defined `mapping (address => uint256) public deposited;` - but not used
