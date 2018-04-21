@@ -1,6 +1,6 @@
-#  TKP smart contracts audit (deployed)
+#  Audit of the TKP smart contracts that deployed in block-chain
 
-Status - completed, last edition 2018-04-18
+Status - completed, last edition 2018-04-19
 
 ## General remarks
 
