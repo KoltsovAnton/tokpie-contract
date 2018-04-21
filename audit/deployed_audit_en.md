@@ -1,14 +1,14 @@
-#  TKP smart contracts audit
+#  TKP smart contracts audit (deployed)
 
-Status - in work, last edition 2018-04-18
+Status - completed, last edition 2018-04-18
 
 ## General remarks
 
+At the time of the audit, contracts have already been placed in the main Etherium network.
 The contract code is checked for software bookmarks and critical errors that can lead to loss of money by investors.
   
 * For a successful participation in the ICO stages, the participant must be present in the whitelist.
 * There is a possibility of sending / using tokens before the end of the ICO.
-* The presence of a `Controller` contract does not exclude the possibility of stages without the use of this contract.
 
 Token TKP inherits the functionality of contracts `ERC20Basic`, `ERC20`, `BasicToken`, `StandardToken`, `MintableToken`, as well as `Ownable`, which implements the contract ownership mechanism and allows owner to install an agent that is allowed to issue tokens.
 
@@ -21,12 +21,6 @@ The finalization of the ICO is carried out with the help of the `postICO` contra
 The management of the current stage of the ICO is carried out by the `Controller` contract.
 
 Some contracts use the `MathLib` library methods for secure computing.
-
-### Recommendations
-
-* Set `pragma solidity 0.4.20;` (without ^), because now the compiler version is not fixed, and this setting allows for newer versions of the compiler, but already now compilation in them causes multiple warning messages.
-* To focus investors' attention on the fact of having `Controller` contract, as the only true source of contracts for the ICO stages.
-* (optional) To carry out the deploying of each of the ICO stages directly from the corresponding function of the `Controller` contract, in this case, the manual transmission of the parameters and the contracts of each of the stages will be partially eliminated, and will simply be absent in the block-chain until the beginning of these steps.
 
 ## Review of contracts
 
@@ -61,7 +55,7 @@ Some contracts use the `MathLib` library methods for secure computing.
 `MintableToken`
 
 1) (Important) Issue of can be done only from agent's address
-2) (Important) Only the owner can set the agent address, it is necessary to use the `Controller` contract to control the ICO stages to exclude the possibility of setting an arbitrary agent address before calling the finalization function in `postICO`
+2) (Note) The owner is the contract `Controller`, which excludes the setting of an arbitrary agent address
 
 `Token`
 
@@ -90,40 +84,35 @@ RefundVault
 `preICO`
 
 1) Inherits `FinalizableCrowdsale`, the owner can change ownership and pause
-2) Inherits `WhitelistedCrowdsale`, the owner sets a whitelist of member addresses.
-3) (Note) the restriction on the minimum number of tokens bought is strictly fixed - 100
-4) (Note) the purchase of tokens is limited to a "white list"
-5) (Important) tokens can be forwarded / used outside the `preICO` contract during pause (see note to `BasicToken`)
-6) (Medium) for correct operation, the `Controller` contract must be used to automate the switch between the ICO stages, otherwise the token owner must set address of this contract as `saleAgent`
+2) Inherits `WhitelistedCrowdsale`, the owner sets a whitelist of member addresses
+3) (Note) To switch between the ICO stages, the `Controller` contract is used
+4) (Note) the restriction on the minimum number of tokens bought is strictly fixed - 100
+5) (Note) the purchase of tokens is limited to a "white list"
+6) (Important) tokens can be forwarded / used outside the `preICO` contract during pause (see note to `BasicToken`)
 7) (Medium) If `preICO` does not take place (softCap does not closed), there is a refund to investors, but there is no refund / incineration of tokens if, for example, ICO retries are planned.
 
 `ICO`
 
 1) Inherits `Pausable`, the owner can change ownership and pause
 2) Inherits `WhitelistedCrowdsale`, the owner sets a "whitelist" of participant addresses
-3) (Note) the restriction on the minimum number of tokens bought is strictly fixed - 100
-4) (Note) the purchase of tokens is limited to a "white list"
-5) (Important) tokens can be sent / used outside of the `preICO` contract during pause (see note to `BasicToken` and `preICO`)
-6) (Important) there are no restrictions on sending / using tokens during ICO periods
-7) (Not critical) the calculated periods of the token price  are shifted by 2 minutes from the start of the ICO, i.e. actually operate from 0:01:00 on the day of launch and then in each period until 23:59 on the 6th day, respectively, the beginning of the period is not at 0:00:00 on the first day of the next period, but at 23:59:00 on the last day of the previous period
-8) (Medium) for correct operation, the `Controller` contract must be used to automate the switch between the ICO stages, otherwise the token owner must set address of this contract as `saleAgent`
-9) (Note) When a contract is being deployed, you must specify the start and end dates of the ICO precisely so that they do not intersect in the `preICO`
-10) (Not critical) is defined `mapping (address => uint256) public deposited;` - but not used
+3) (Note) To switch between the ICO stages, the `Controller` contract is used
+4) (Note) the restriction on the minimum number of tokens bought is strictly fixed - 100
+5) (Note) the purchase of tokens is limited to a "white list"
+6) (Important) tokens can be sent / used outside of the `preICO` contract during pause (see note to `BasicToken` and `preICO`)
+7) (Important) there are no restrictions on sending / using tokens during ICO periods
+8) (Not critical) the calculated periods of the token price  are shifted by 2 minutes from the start of the ICO, i.e. actually operate from 0:01:00 on the day of launch and then in each period until 23:59 on the 6th day, respectively, the beginning of the period is not at 0:00:00 on the first day of the next period, but at 23:59:00 on the last day of the previous period
+9) (Not critical) is defined `mapping (address => uint256) public deposited;` - but not used
 
 `postICO`
 
 1) Inherits `Ownable`, the owner can change ownership
-2) (Note) When a contract is being deployed, you must specify the end date of the ICO precisely so that it does not intersect ICO
-3) (Medium) for correct operation, the `Controller` contract must be used to automate the switch between the ICO stages, otherwise the token owner must set address of this contract as `saleAgent`
-4) (Not critical), the `claim` functions have a non-optimal code and in some cases a slight gas overrun
+2) (Note) To switch between the ICO stages, the `Controller` contract is used
+3) (Not critical), the `claim` functions have a non-optimal code and in some cases a slight gas overrun
 
 `Controller`
 
 1) Inherits `Ownable`, the owner can change ownership
-2) (Medium) After the contract has been deployed, for the correct work, the owner must set it's address as the new owner of the token
-3) (Medium) The addresses of all other contracts of the ICO stages must be set, when this contract is deployed, i.e. they should already be deployed in the block-chain.
-4) (Not critical) check `require (token.owner () == address (this));` in functions `startICO` and `startPostICO` is redundant, because there are no conditions under which this verification may not be performed
-5) (Important) The presence of this contract does not prohibit the owner from not using it at all for the ICO stages, since investors do not have the opportunity to verify that the management of the ICO stages is carried out exactly through this contract.
+2) (Not critical) check `require (token.owner () == address (this));` in functions `startICO` and `startPostICO` is redundant, because there are no conditions under which this verification may not be performed
 
 The Migrations contract is not related to other contracts.
 
